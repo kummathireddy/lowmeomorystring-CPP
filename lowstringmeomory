@@ -1,0 +1,539 @@
+#include <iostream>
+#include <vector>
+#include<string.h>
+
+using namespace std;
+
+class LString {
+
+	private:
+		char *m_pBuffer;
+		int *m_pCount;
+
+		int m_Length;
+
+		static std::vector<LString *> objectPool;
+
+	public:
+		LString();
+		LString(const char* pstr);
+		~LString();
+
+		LString(const LString &other);
+		LString & operator=(const LString &pstr);
+		LString & operator=(const char* pstr);
+
+		int GetLength() const {
+			return m_Length;
+		}
+
+		const char * GetString() const {
+			return m_pBuffer;
+		}
+
+		char operator[](int index) const {
+			if(index > m_Length)
+				exit(-1);
+			return m_pBuffer[index] ;
+		}
+
+		// SetString
+		void SetString(const char *pstr) ;					
+		// Insert a string at index
+		void Insert(int index, const char *pstr);		
+		// Insert a character at index count times
+		void Insert(int index, char ch, int count);	
+		// Remove a character from index
+		void Remove(int index);							
+		// Remove all occurrences of a character);
+		void RemoveAll(char ch);							
+		// Trim n characters from left
+		void TrimLeft(int n);							
+		// Trim n characters from right
+		void TrimRight(int n);							
+		// Search for a string. Return -1 if not found else return found position
+		int Find(const char *pstr);								
+
+		// Concatenate 2 LString objects
+		LString & operator +(const LString &second);	
+		// Concatenate LString object with a string 
+		LString & operator +(const char *second);  		
+		// Concatenate and assign an LString object with other LString object
+		LString & operator +=(const LString &second);		
+		// Concatenate and assign an LString object with a string
+		LString & operator +=(const char *second);			
+		// Concatenate and assign an LString object with a character
+		LString & operator +=(const char);					
+
+
+
+		void ValidateAndAllocateString(const char* pstr);
+};
+
+// Comparison operator to compare two LString objects and LString object with C-style string
+bool operator==(const LString &left, const LString &right) ; 
+bool operator!=(const LString &left, const LString &right) ;
+
+// Comparison operator to compare two LString objects and LString object with C-style string
+bool operator==(const LString &left, const char* right) ; 
+
+
+
+//constructor
+LString::LString()
+{
+	m_pBuffer = new char[1]();
+	m_pCount = new int(1);
+
+	objectPool.push_back(this);
+}
+
+//Parameterized constructor
+LString::LString(const char* pstr)
+{
+	auto length = strlen(pstr);
+
+	if (objectPool.size() == 0)
+	{
+		m_pBuffer = new char[length + 1]();
+		strcpy(m_pBuffer, pstr);
+		m_Length = length;
+
+		m_pCount = new int(1);
+	}
+	else
+	{
+		ValidateAndAllocateString(pstr);
+	}
+
+	objectPool.push_back(this);
+}
+
+//destructor
+LString::~LString()
+{
+	if(--(*m_pCount) == 0){
+		delete[] m_pBuffer ;
+		m_pBuffer = NULL;
+		delete m_pCount ;
+	}
+}
+
+//Copy Constructor
+LString::LString(const LString &other)
+{
+	m_pBuffer = other.m_pBuffer;
+	m_Length = other.m_Length;
+	m_pCount = other.m_pCount;
+	++(*m_pCount);
+
+	objectPool.push_back(this);
+}
+
+//Assignment operator - copy
+LString& LString::operator=(const LString &other)
+{
+	if(this != &other) {
+
+		if(--(*m_pCount) == 0){
+			delete []m_pBuffer ;
+			m_pBuffer = NULL;
+			delete m_pCount ;
+		}
+
+		m_pBuffer = other.m_pBuffer;
+		m_Length = other.m_Length;
+		m_pCount = other.m_pCount;
+		++(*m_pCount);
+	}
+
+	return *this;
+}
+
+LString & LString::operator=(const char* pstr)
+{
+	SetString(pstr);
+
+	return *this;
+}
+
+void LString::SetString(const char *pstr)
+{
+	if (strcmp(m_pBuffer,pstr) != 0)
+	{
+		if(--(*m_pCount) == 0){
+			delete []m_pBuffer ;
+			m_pBuffer = NULL;
+			delete m_pCount ;
+		}
+
+		ValidateAndAllocateString(pstr);
+	}
+}
+
+void LString::Insert(int index, const char *pstr)
+{
+	if(index > m_Length)
+		exit(-1);
+
+	auto newLength = m_Length + strlen(pstr);
+	char *pTemp = new char[newLength + 1]();
+
+	if(index == 0) {
+		strcpy(pTemp, pstr);
+		strcat(pTemp, m_pBuffer);
+	}else if(index == m_Length) {
+		strcpy(pTemp, m_pBuffer);
+		strcat(pTemp, pstr);
+	}else {
+		strncpy(pTemp, m_pBuffer, index);
+		strcat(pTemp, pstr);
+		strcat(pTemp, m_pBuffer + index);
+	}
+
+	if(--(*m_pCount) == 0){
+		delete []m_pBuffer;
+		m_pBuffer = NULL;
+		delete m_pCount;
+	}
+	ValidateAndAllocateString(pTemp);
+
+	delete []pTemp;
+}
+
+void LString::Insert(int index, char ch, int count)
+{
+	if(index > m_Length)
+		exit(-1);
+
+	char* pTempChar = new char[count + 1]();
+	for (auto i=0; i<count; i++)
+	{
+		pTempChar[i] = ch;
+	}
+
+	auto newLength = m_Length + count;
+	char *pTemp = new char[newLength + 1]();
+
+	if(index == 0) {
+		strcpy(pTemp, pTempChar);
+		strcat(pTemp, m_pBuffer);
+	}else if(index == m_Length) {
+		strcpy(pTemp, m_pBuffer);
+		strcat(pTemp, pTempChar);
+	}else {
+		strncpy(pTemp, m_pBuffer, index);
+		strcat(pTemp, pTempChar);
+		strcat(pTemp, m_pBuffer + index);
+	}
+
+	if(--(*m_pCount) == 0){
+		delete []m_pBuffer;
+		m_pBuffer = NULL;
+		delete m_pCount;
+	}
+	ValidateAndAllocateString(pTemp);
+
+	delete []pTemp;
+	delete []pTempChar;
+
+}
+
+void LString::Remove(int index)
+{
+	if(index > m_Length)
+		exit(-1);
+
+	char *pTemp = new char[m_Length]();
+
+	int j = 0;
+	for (int i=0; i <m_Length; i++)
+	{
+		if (i != index) {
+			pTemp[j++] = m_pBuffer[i];
+		}
+	}
+	pTemp[j] = '\0';
+
+	if(--(*m_pCount) == 0){
+		delete []m_pBuffer;
+		m_pBuffer = NULL;
+		delete m_pCount;
+	}
+	ValidateAndAllocateString(pTemp);
+
+	delete []pTemp;
+}
+
+void LString::RemoveAll(char ch)
+{
+	int idxR = 0, idxW = 0;
+	char *pTemp = new char[m_Length+1]();
+	strcpy(pTemp, m_pBuffer);
+
+	while (pTemp[idxR])
+	{
+		if (pTemp[idxR]!=ch) 
+		{   
+			pTemp[idxW++] = pTemp[idxR];
+		}
+		idxR++;       
+	}
+
+	pTemp[idxW]='\0';
+
+	if(--(*m_pCount) == 0){
+		delete []m_pBuffer;
+		m_pBuffer = NULL;
+		delete m_pCount;
+	}
+	ValidateAndAllocateString(pTemp);
+
+	delete []pTemp;
+}
+
+void LString::TrimLeft(int n)
+{
+	if(n > m_Length)
+		exit(-1);
+
+	auto newLength = m_Length - n;
+	char *pTemp = new char[newLength + 1]();
+
+	strcpy(pTemp, m_pBuffer+n);
+
+	if(--(*m_pCount) == 0){
+		delete []m_pBuffer;
+		m_pBuffer = NULL;
+		delete m_pCount;
+	}
+	ValidateAndAllocateString(pTemp);
+
+	delete []pTemp;
+}
+
+void LString::TrimRight(int n)
+{
+	if(n > m_Length)
+		exit(-1);
+
+	auto newLength = m_Length - n;
+	char *pTemp = new char[newLength + 1]();
+
+	strncpy(pTemp, m_pBuffer, newLength);
+
+	if(--(*m_pCount) == 0){
+		delete []m_pBuffer;
+		m_pBuffer = NULL;
+		delete m_pCount;
+	}
+	ValidateAndAllocateString(pTemp);
+
+	delete []pTemp;
+}
+
+int LString::Find(const char *pstr)
+{
+	int findStrLen = strlen(pstr);
+
+	int i, j;
+	for (j = 0; j <= (m_Length - findStrLen); ++j)
+	{
+		for (i = 0; i < findStrLen && pstr[i] == m_pBuffer[i + j]; ++i);
+		if (i >= findStrLen) {
+			return j;
+		}
+	}
+
+	return -1;
+}
+
+LString & LString::operator+(const LString &second)
+{
+	Insert(m_Length, second.m_pBuffer);
+	return *this;
+}
+
+LString & LString::operator+(const char *second)
+{
+	Insert(m_Length, second);
+	return *this;
+}
+
+LString & LString::operator +=(const LString &second)
+{
+	Insert(m_Length, second.m_pBuffer);
+	return *this;
+}
+
+LString & LString::operator +=(const char *second)
+{
+	Insert(m_Length, second);
+	return *this;
+}
+
+LString & LString::operator +=(const char ch)
+{
+	Insert(m_Length, ch, 1);
+	return *this;
+}
+
+bool operator==(const LString& left, const LString& right) {
+	return left.GetLength() == right.GetLength() && strcmp(left.GetString(),right.GetString()) == 0;
+}
+
+bool operator!=(const LString& left, const LString& right) {
+	return ! (left == right);
+}
+
+bool operator==(const LString &left, const char* right) {
+	return left.GetLength() == strlen(right) && strcmp(left.GetString(),right) == 0;
+}
+
+void LString::ValidateAndAllocateString(const char* pstr)
+{
+	auto length = strlen(pstr);
+	bool found = false;
+
+	std::vector<LString *>::iterator it;
+
+	for( it = objectPool.begin(); it != objectPool.end(); it++)
+	{
+		if ((*it)->m_pBuffer == NULL)
+			continue;
+
+		if (strcmp((*it)->m_pBuffer, pstr) == 0)
+		{
+			m_pBuffer = (*it)->m_pBuffer;
+			m_Length = (*it)->m_Length;
+			m_pCount = (*it)->m_pCount;
+			++(*m_pCount);
+			found = true;
+			break;
+		}
+	}
+
+	if (!found)
+	{
+		m_pBuffer = new char[length + 1]();
+		strcpy(m_pBuffer, pstr);
+		m_Length = length;
+
+		m_pCount = new int(1);
+	}
+}
+
+std::vector<LString *> LString::objectPool;
+
+
+int main()
+{
+	LString s1 = "Hello Wolrd! ";
+
+	cout << "S1 object string " << s1.GetString() << " and address of the buffer " << (void *)s1.GetString() << endl;
+
+	LString s2(s1); 	//s2 & s1 are pointing to same buffer
+
+	cout << endl << "S1 object string " << s1.GetString() << " and address of the buffer " << (void *)s1.GetString() << endl;
+	cout << "S2 object string " << s2.GetString() << " and address of the buffer " << (void *)s2.GetString() << endl;
+
+	s1 = "New string"; 	//s1 will allocate new memory. s2 will continue pointing to Ã¢â‚¬Å“C++Ã¢â‚¬		 
+
+	cout << endl << "S1 object string " << s1.GetString() << " and address of the buffer " << (void *)s1.GetString() << endl;
+	cout << "S2 object string " << s2.GetString() << " and address of the buffer " << (void *)s2.GetString() << endl;
+
+	LString s3(s2); 	//s3 & s2 will point to same buffer													 
+
+	cout << endl << "S1 object string " << s1.GetString() << " and address of the buffer " << (void *)s1.GetString() << endl;
+	cout << "S2 object string " << s2.GetString() << " and address of the buffer " << (void *)s2.GetString() << endl;
+	cout << "S3 object string " << s3.GetString() << " and address of the buffer " << (void *)s3.GetString() << endl;
+
+	LString s4(s2); 	//s2,s3 & s4 will point to same buffer												 
+
+	cout << endl << "S1 object string " << s1.GetString() << " and address of the buffer " << (void *)s1.GetString() << endl;
+	cout << "S2 object string " << s2.GetString() << " and address of the buffer " << (void *)s2.GetString() << endl;
+	cout << "S3 object string " << s3.GetString() << " and address of the buffer " << (void *)s3.GetString() << endl;
+	cout << "S4 object string " << s4.GetString() << " and address of the buffer " << (void *)s4.GetString() << endl;
+
+	s3 = s1 ; 			//s3 & s1 are pointing to same buffer												 
+	cout << endl << "S1 object string " << s1.GetString() << " and address of the buffer " << (void *)s1.GetString() << endl;
+	cout << "S2 object string " << s2.GetString() << " and address of the buffer " << (void *)s2.GetString() << endl;
+	cout << "S3 object string " << s3.GetString() << " and address of the buffer " << (void *)s3.GetString() << endl;
+	cout << "S4 object string " << s4.GetString() << " and address of the buffer " << (void *)s4.GetString() << endl;
+
+	LString s5 = "CPP Language!"; //s5, s2, s4 are pointing to same buffer											 
+	cout << endl << "S1 object string " << s1.GetString() << " and address of the buffer " << (void *)s1.GetString() << endl;
+	cout << "S2 object string " << s2.GetString() << " and address of the buffer " << (void *)s2.GetString() << endl;
+	cout << "S3 object string " << s3.GetString() << " and address of the buffer " << (void *)s3.GetString() << endl;
+	cout << "S4 object string " << s4.GetString() << " and address of the buffer " << (void *)s4.GetString() << endl;
+	cout << "S5 object string " << s5.GetString() << " and address of the buffer " << (void *)s5.GetString() << endl;
+
+	s3.SetString("Cpp Language");//s3, s2, s4 & s5 are pointing to the same buffer									 
+	cout << endl << "S1 object string " << s1.GetString() << " and address of the buffer " << (void *)s1.GetString() << endl;
+	cout << "S2 object string " << s2.GetString() << " and address of the buffer " << (void *)s2.GetString() << endl;
+	cout << "S3 object string " << s3.GetString() << " and address of the buffer " << (void *)s3.GetString() << endl;
+	cout << "S4 object string " << s4.GetString() << " and address of the buffer " << (void *)s4.GetString() << endl;
+	cout << "S5 object string " << s5.GetString() << " and address of the buffer " << (void *)s5.GetString() << endl << endl;
+
+	s3.Insert(0, "1My ");
+	s3.Insert(s3.GetLength(), " Program ");
+	cout << "GetString after Insert method --> "<< s3.GetString() << endl << endl;
+
+	s3.Insert(10,'z', 5);
+	cout << "GetStrig after Insert a char in a position for n times --> "<< s3.GetString() << endl << endl;
+
+	s3.Remove(0);
+	cout << "GetString after Remove a character through index --> "<< s3.GetString() << endl << endl;
+
+	s3.RemoveAll('z');
+	cout << "GetString after Remove all occurrences of a character(z) --> "<< s3.GetString() << endl << endl;
+
+	cout << "GetString  before call Trim method--> "<< s1.GetString() << endl << endl;
+	s1.Insert(0, "abc");
+	s1.Insert(s1.GetLength(), "abc");
+	cout << "GetString after Insert method--> "<< s1.GetString() << endl << endl;
+
+	s1.TrimLeft(3);	
+	cout << "GetString after Trim n characters from left --> "<< s1.GetString() << endl << endl;
+
+	s1.TrimRight(3);
+	cout << "GetString after Trim n characters from Right --> "<< s1.GetString() << endl << endl;
+
+	cout << "Index of given pattern in string --> "<< s1.Find("ring") << endl << endl;
+
+	s3 = s3 + s5;	
+	cout << "GetString after + operator with LString object --> "<< s3.GetString() << endl << endl;
+
+	s3 = s3 + "added ";
+	cout << "GetString after + operator with string --> "<< s3.GetString() << endl << endl;
+
+	s3 += "twice";
+	cout << "GetString after += operator with string --> "<< s3.GetString() << endl << endl;
+
+	s3 += '.';
+	cout << "GetString after += operator with char --> "<< s3.GetString() << endl << endl;
+
+	s3 += s5;
+	cout << "GetString after += operator with LString object --> "<< s3.GetString() << endl << endl;
+
+	LString s6 = "Sample1";
+	LString s7 = "Sample2";
+
+	if (operator==(s6,s7))
+	{
+		cout << "LString objects are same"<< endl << endl;
+	}
+	else
+	{
+		cout << "LString objects are not same"<< endl << endl;
+	}
+
+	if (operator==(s6,"Sample1"))
+	{
+		cout << "LString object and string constant are same"<< endl << endl;
+	}
+	else
+	{
+		cout << "LString object and string are not same"<< endl << endl;
+	}
+}
